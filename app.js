@@ -1,14 +1,17 @@
 /* ==========================================================================
-   THE VOID ANIME // Core Application Engine (Zero Storage, In-Memory)
+   THE VOID ANIME // Manga Short Studio Engine (Japanese / Korean / Chinese)
    ========================================================================== */
 
-// Application State (Kept strictly in browser RAM)
+// Global State
 const appState = {
-  pages: [],       // Array of { id, name, file, objectUrl }
-  activePageIndex: 0
+  pages: [], // Array of { id, name, file, objectUrl }
+  activePageIndex: 0,
+  fabricCanvas: null,
+  shortsGuideActive: false,
+  selectedLang: 'jpn' // Default to Japanese
 };
 
-// DOM Elements
+// DOM References
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const thumbnailList = document.getElementById('thumbnailList');
@@ -16,24 +19,20 @@ const pageCountLabel = document.getElementById('pageCount');
 const stageContainer = document.getElementById('stageContainer');
 
 // --------------------------------------------------------------------------
-// Drag and Drop Event Listeners with GSAP Feedback
+// 1. Drag & Drop and Upload Listeners
 // --------------------------------------------------------------------------
 if (dropZone) {
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, (e) => {
+  ['dragenter', 'dragover'].forEach(name => {
+    dropZone.addEventListener(name, (e) => {
       e.preventDefault();
-      e.stopPropagation();
       dropZone.classList.add('dragover');
-      gsap.to(dropZone, { scale: 1.02, duration: 0.2, ease: 'power2.out' });
     });
   });
 
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, (e) => {
+  ['dragleave', 'drop'].forEach(name => {
+    dropZone.addEventListener(name, (e) => {
       e.preventDefault();
-      e.stopPropagation();
       dropZone.classList.remove('dragover');
-      gsap.to(dropZone, { scale: 1, duration: 0.2, ease: 'power2.out' });
     });
   });
 
@@ -50,51 +49,31 @@ if (fileInput) {
   });
 }
 
-// --------------------------------------------------------------------------
-// File Ingestion & Memory Management
-// --------------------------------------------------------------------------
 function handleIncomingFiles(files) {
-  const imageFiles = files.filter(file => file.type.startsWith('image/'));
-  
-  if (imageFiles.length === 0) {
-    alert('Please select valid image files (PNG, JPG, WEBP).');
-    return;
-  }
+  const images = files.filter(f => f.type.startsWith('image/'));
+  if (!images.length) return alert('Please upload image files (PNG, JPG, WEBP).');
 
-  // Cap at 10 pages total
-  const remainingSlots = 10 - appState.pages.length;
-  if (remainingSlots <= 0) {
-    alert('Maximum limit reached: You can load up to 10 pages at a time.');
-    return;
-  }
+  const remaining = 10 - appState.pages.length;
+  if (remaining <= 0) return alert('Maximum 10 pages limit reached.');
 
-  const filesToAdd = imageFiles.slice(0, remainingSlots);
-
-  filesToAdd.forEach((file, index) => {
-    // createObjectURL creates an in-memory browser reference without storing anything on a server
-    const memoryUrl = URL.createObjectURL(file);
+  const filesToAdd = images.slice(0, remaining);
+  filesToAdd.forEach((file, idx) => {
     appState.pages.push({
-      id: 'page_' + Date.now() + '_' + index,
+      id: `page_${Date.now()}_${idx}`,
       name: file.name,
       file: file,
-      objectUrl: memoryUrl
+      objectUrl: URL.createObjectURL(file)
     });
   });
 
   renderThumbnails();
-  
-  // Set the first uploaded page as active if this is the first batch
   if (appState.pages.length === filesToAdd.length) {
     selectPage(0);
   }
 }
 
-// --------------------------------------------------------------------------
-// Sidebar Thumbnail Rendering
-// --------------------------------------------------------------------------
 function renderThumbnails() {
   if (!thumbnailList || !pageCountLabel) return;
-
   pageCountLabel.textContent = appState.pages.length;
   thumbnailList.innerHTML = '';
 
@@ -105,49 +84,317 @@ function renderThumbnails() {
       <img src="${page.objectUrl}" alt="Page ${index + 1}">
       <div class="thumbnail-label">
         <span>PAGE ${String(index + 1).padStart(2, '0')}</span>
-        <span>${page.name.length > 12 ? page.name.substring(0, 9) + '...' : page.name}</span>
+        <span>${page.name.length > 10 ? page.name.substring(0, 8) + '...' : page.name}</span>
       </div>
     `;
-
     card.addEventListener('click', () => selectPage(index));
     thumbnailList.appendChild(card);
   });
-
-  // Re-run Lucide icons in case any were added
-  if (window.lucide) lucide.createIcons();
 }
 
 // --------------------------------------------------------------------------
-// Page Switcher
+// 2. Editor Workspace with Language Switcher
 // --------------------------------------------------------------------------
 function selectPage(index) {
   if (index < 0 || index >= appState.pages.length) return;
   appState.activePageIndex = index;
 
-  // Highlight active thumbnail
   const cards = thumbnailList.querySelectorAll('.thumbnail-card');
-  cards.forEach((card, idx) => {
-    card.classList.toggle('active', idx === index);
-  });
+  cards.forEach((c, i) => c.classList.toggle('active', i === index));
 
-  // Switch workspace view from dropzone to active preview
-  const activePage = appState.pages[index];
-  displayActivePage(activePage);
+  initEditorWorkspace(appState.pages[index]);
 }
 
-function displayActivePage(page) {
+function initEditorWorkspace(page) {
   stageContainer.innerHTML = `
-    <div class="active-page-preview" style="text-align: center; max-width: 90%; max-height: 90%;">
-      <img src="${page.objectUrl}" alt="${page.name}" style="max-height: 75vh; max-width: 100%; border: 2px solid var(--border-subtle); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-      <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
-        <button class="btn-primary" id="btnStartOcr">
-          <i data-lucide="scan"></i> DETECT SPEECH BUBBLES
+    <div class="editor-workspace">
+      <!-- Toolbar -->
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <!-- Language Selector (Japanese, Korean Manhwa, Chinese) -->
+          <select id="langSelector" class="btn-secondary" style="padding: 0.55rem 0.8rem; cursor: pointer;">
+            <option value="jpn">🇯🇵 JAPANESE (MANGA)</option>
+            <option value="kor">🇰🇷 KOREAN (MANHWA)</option>
+            <option value="chi_sim">🇨🇳 CHINESE (MANHUA)</option>
+          </select>
+
+          <button class="btn-primary" id="btnScanOcr">
+            <i data-lucide="scan-text"></i> AUTO-DETECT BUBBLES
+          </button>
+          <button class="btn-secondary" id="btnAddBubble">
+            <i data-lucide="plus-circle"></i> + ADD BUBBLE
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button class="btn-action" id="btnToggleShorts">
+            <i data-lucide="smartphone"></i> 9:16 SHORTS GUIDE
+          </button>
+          <button class="btn-primary" id="btnExport">
+            <i data-lucide="download"></i> DOWNLOAD PNG
+          </button>
+        </div>
+      </div>
+
+      <!-- Scanning Banner -->
+      <div class="scan-progress-banner" id="scanBanner">
+        <i data-lucide="loader-2" class="spin"></i>
+        <span id="scanStatus">Scanning dialogue...</span>
+      </div>
+
+      <!-- Canvas Area -->
+      <div class="canvas-viewport" id="viewport">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="mangaCanvas"></canvas>
+          <div class="shorts-frame-overlay" id="shortsOverlay">
+            <span class="shorts-badge">9:16 SHORTS SAFE ZONE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Bubble Inspector -->
+      <div class="bubble-inspector" id="bubbleInspector">
+        <input type="text" id="inspectorText" class="inspector-input" placeholder="Type dialogue...">
+        <div class="toolbar-group">
+          <label style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">SIZE:</label>
+          <input type="range" id="inspectorFontSize" min="16" max="72" value="28" style="cursor:pointer; width:90px;">
+        </div>
+        <button class="btn-action btn-danger" id="btnDeleteBubble">
+          <i data-lucide="trash-2"></i>
         </button>
       </div>
     </div>
   `;
 
   if (window.lucide) lucide.createIcons();
+  setupCanvas(page.objectUrl);
+  bindEditorButtons();
+}
 
-  gsap.from('.active-page-preview', { opacity: 0, y: 15, duration: 0.3, ease: 'power2.out' });
+function setupCanvas(imageUrl) {
+  const img = new Image();
+  img.src = imageUrl;
+  img.onload = () => {
+    const maxWidth = Math.min(window.innerWidth - 320, 800);
+    const scaleFactor = Math.min(1, maxWidth / img.width);
+    
+    const canvasWidth = img.width * scaleFactor;
+    const canvasHeight = img.height * scaleFactor;
+
+    if (appState.fabricCanvas) {
+      appState.fabricCanvas.dispose();
+    }
+
+    const canvasElem = document.getElementById('mangaCanvas');
+    appState.fabricCanvas = new fabric.Canvas(canvasElem, {
+      width: canvasWidth,
+      height: canvasHeight,
+      selection: true
+    });
+
+    fabric.Image.fromURL(imageUrl, (fImg) => {
+      fImg.set({
+        scaleX: canvasWidth / fImg.width,
+        scaleY: canvasHeight / fImg.height,
+        selectable: false,
+        evented: false
+      });
+      appState.fabricCanvas.setBackgroundImage(fImg, appState.fabricCanvas.renderAll.bind(appState.fabricCanvas));
+    });
+
+    setupObjectListeners();
+  };
+}
+
+// --------------------------------------------------------------------------
+// 3. Speech Bubble Inspector & Editing
+// --------------------------------------------------------------------------
+function setupObjectListeners() {
+  const canvas = appState.fabricCanvas;
+  const inspector = document.getElementById('bubbleInspector');
+  const textInput = document.getElementById('inspectorText');
+  const sizeInput = document.getElementById('inspectorFontSize');
+  const deleteBtn = document.getElementById('btnDeleteBubble');
+
+  canvas.on('selection:created', onSelect);
+  canvas.on('selection:updated', onSelect);
+  canvas.on('selection:cleared', () => {
+    if (inspector) inspector.classList.remove('active');
+  });
+
+  function onSelect(e) {
+    const obj = e.selected ? e.selected[0] : null;
+    if (!obj || !obj.isBubble) {
+      inspector.classList.remove('active');
+      return;
+    }
+
+    inspector.classList.add('active');
+    textInput.value = obj.item(1).text;
+    sizeInput.value = obj.item(1).fontSize;
+  }
+
+  textInput.oninput = (e) => {
+    const active = canvas.getActiveObject();
+    if (active && active.isBubble) {
+      active.item(1).set('text', e.target.value.toUpperCase());
+      canvas.renderAll();
+    }
+  };
+
+  sizeInput.oninput = (e) => {
+    const active = canvas.getActiveObject();
+    if (active && active.isBubble) {
+      active.item(1).set('fontSize', parseInt(e.target.value, 10));
+      canvas.renderAll();
+    }
+  };
+
+  deleteBtn.onclick = () => {
+    const active = canvas.getActiveObject();
+    if (active) {
+      canvas.remove(active);
+      canvas.discardActiveObject();
+      inspector.classList.remove('active');
+      canvas.renderAll();
+    }
+  };
+}
+
+// --------------------------------------------------------------------------
+// 4. Bubble Creation Helper
+// --------------------------------------------------------------------------
+function addDialogueBubble(x, y, width, height, text = "SPEECH HERE") {
+  const canvas = appState.fabricCanvas;
+  if (!canvas) return;
+
+  const bubbleW = Math.max(width || 130, 110);
+  const bubbleH = Math.max(height || 65, 55);
+
+  const bgRect = new fabric.Rect({
+    width: bubbleW,
+    height: bubbleH,
+    fill: '#ffffff',
+    stroke: '#000000',
+    strokeWidth: 2,
+    rx: 8,
+    ry: 8,
+    originX: 'center',
+    originY: 'center'
+  });
+
+  const textBox = new fabric.Textbox(text.toUpperCase(), {
+    width: bubbleW - 12,
+    fontSize: 22,
+    fontFamily: 'Bangers',
+    fill: '#000000',
+    textAlign: 'center',
+    originX: 'center',
+    originY: 'center',
+    splitByGrapheme: true
+  });
+
+  const group = new fabric.Group([bgRect, textBox], {
+    left: x || canvas.width / 2,
+    top: y || canvas.height / 2,
+    originX: 'center',
+    originY: 'center',
+    isBubble: true
+  });
+
+  canvas.add(group);
+  canvas.setActiveObject(group);
+  canvas.renderAll();
+}
+
+// --------------------------------------------------------------------------
+// 5. Multi-Language OCR (Japanese / Korean / Chinese)
+// --------------------------------------------------------------------------
+async function runOcrScan() {
+  const activePage = appState.pages[appState.activePageIndex];
+  const banner = document.getElementById('scanBanner');
+  const status = document.getElementById('scanStatus');
+  const selectedLang = document.getElementById('langSelector').value;
+
+  if (!activePage || !banner) return;
+  banner.classList.add('active');
+  
+  const langNames = { jpn: 'Japanese', kor: 'Korean', chi_sim: 'Chinese' };
+  status.textContent = `Loading ${langNames[selectedLang]} OCR model...`;
+
+  try {
+    const worker = await Tesseract.createWorker(selectedLang);
+    status.textContent = `Scanning ${langNames[selectedLang]} dialogue bubbles...`;
+
+    const result = await worker.recognize(activePage.file);
+    await worker.terminate();
+
+    const canvas = appState.fabricCanvas;
+    const scaleFactor = canvas.width / result.data.imageColor.width;
+
+    const blocks = result.data.blocks || [];
+    let detectedCount = 0;
+
+    blocks.forEach(block => {
+      const cleanText = block.text.trim();
+      if (cleanText.length > 1) {
+        detectedCount++;
+        const bbox = block.bbox;
+        const x = (bbox.x0 + bbox.x1) / 2 * scaleFactor;
+        const y = (bbox.y0 + bbox.y1) / 2 * scaleFactor;
+        const w = (bbox.x1 - bbox.x0) * scaleFactor;
+        const h = (bbox.y1 - bbox.y0) * scaleFactor;
+
+        addDialogueBubble(x, y, w + 16, h + 16, cleanText);
+      }
+    });
+
+    status.textContent = `Done! Found ${detectedCount} bubbles.`;
+    setTimeout(() => banner.classList.remove('active'), 2000);
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Scan failed. Use '+ ADD BUBBLE' manually.";
+    setTimeout(() => banner.classList.remove('active'), 3000);
+  }
+}
+
+// --------------------------------------------------------------------------
+// 6. Toolbar Actions (9:16 Shorts Toggle & PNG Export)
+// --------------------------------------------------------------------------
+function bindEditorButtons() {
+  document.getElementById('btnScanOcr').onclick = runOcrScan;
+  
+  document.getElementById('btnAddBubble').onclick = () => {
+    addDialogueBubble(null, null, 140, 70, "ENTER TEXT");
+  };
+
+  const btnShorts = document.getElementById('btnToggleShorts');
+  const overlay = document.getElementById('shortsOverlay');
+  btnShorts.onclick = () => {
+    appState.shortsGuideActive = !appState.shortsGuideActive;
+    btnShorts.classList.toggle('active', appState.shortsGuideActive);
+    overlay.classList.toggle('active', appState.shortsGuideActive);
+  };
+
+  document.getElementById('btnExport').onclick = exportPageAsPng;
+}
+
+function exportPageAsPng() {
+  const canvas = appState.fabricCanvas;
+  if (!canvas) return;
+
+  canvas.discardActiveObject();
+  canvas.renderAll();
+
+  const dataUrl = canvas.toDataURL({
+    format: 'png',
+    multiplier: 2
+  });
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `THE_VOID_PAGE_${appState.activePageIndex + 1}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
