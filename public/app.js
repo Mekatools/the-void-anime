@@ -1,29 +1,21 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Short Studio (Vertical OCR + Drag-to-Translate)
+   THE VOID ANIME // Manga Studio (Seamless Bubble Erase & Clean Typesetting)
    ========================================================================== */
 
-// Global State
 const appState = {
   pages: [],
   activePageIndex: 0,
   fabricCanvas: null,
-  shortsGuideActive: false,
-  isDrawingBox: false,
-  origX: 0,
-  origY: 0,
-  activeRect: null
+  shortsGuideActive: false
 };
 
-// DOM References
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const thumbnailList = document.getElementById('thumbnailList');
 const pageCountLabel = document.getElementById('pageCount');
 const stageContainer = document.getElementById('stageContainer');
 
-// --------------------------------------------------------------------------
-// 1. Upload & State Handlers
-// --------------------------------------------------------------------------
+// 1. Upload Handlers
 if (dropZone) {
   ['dragenter', 'dragover'].forEach(n => {
     dropZone.addEventListener(n, e => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -68,18 +60,14 @@ function renderThumbnails() {
     card.className = `thumbnail-card ${index === appState.activePageIndex ? 'active' : ''}`;
     card.innerHTML = `
       <img src="${page.objectUrl}" alt="Page ${index + 1}">
-      <div class="thumbnail-label">
-        <span>PAGE ${String(index + 1).padStart(2, '0')}</span>
-      </div>
+      <div class="thumbnail-label"><span>PAGE ${String(index + 1).padStart(2, '0')}</span></div>
     `;
     card.addEventListener('click', () => selectPage(index));
     thumbnailList.appendChild(card);
   });
 }
 
-// --------------------------------------------------------------------------
 // 2. Editor Workspace
-// --------------------------------------------------------------------------
 function selectPage(index) {
   if (index < 0 || index >= appState.pages.length) return;
   appState.activePageIndex = index;
@@ -97,7 +85,7 @@ function initEditorWorkspace(page) {
       <div class="editor-toolbar">
         <div class="toolbar-group">
           <select id="langSelector" class="btn-secondary" style="padding: 0.55rem 0.8rem; cursor: pointer;">
-            <option value="jpn_vert">🇯🇵 JAPANESE (VERTICAL MANGA)</option>
+            <option value="jpn_vert">🇯🇵 JAPANESE (VERTICAL)</option>
             <option value="kor">🇰🇷 KOREAN (MANHWA)</option>
             <option value="chi_sim">🇨🇳 CHINESE (MANHUA)</option>
           </select>
@@ -107,7 +95,7 @@ function initEditorWorkspace(page) {
           </button>
           
           <button class="btn-secondary" id="btnAddBubble">
-            <i data-lucide="plus-circle"></i> + BLANK BUBBLE
+            <i data-lucide="plus-circle"></i> + BLANK TEXT
           </button>
         </div>
 
@@ -121,13 +109,13 @@ function initEditorWorkspace(page) {
         </div>
       </div>
 
-      <!-- Notification Banner -->
+      <!-- Banner -->
       <div class="scan-progress-banner" id="scanBanner">
         <i data-lucide="loader-2" class="spin"></i>
         <span id="scanStatus">Ready</span>
       </div>
 
-      <!-- Canvas Viewport -->
+      <!-- Canvas -->
       <div class="canvas-viewport" id="viewport">
         <div class="canvas-wrapper" id="canvasWrapper">
           <canvas id="mangaCanvas"></canvas>
@@ -137,12 +125,12 @@ function initEditorWorkspace(page) {
         </div>
       </div>
 
-      <!-- Bubble Inspector -->
+      <!-- Floating Bubble Inspector -->
       <div class="bubble-inspector" id="bubbleInspector">
         <input type="text" id="inspectorText" class="inspector-input" placeholder="Type dialogue...">
         <div class="toolbar-group">
           <label style="font-size:0.75rem; font-weight:800; color:var(--text-muted);">SIZE:</label>
-          <input type="range" id="inspectorFontSize" min="16" max="72" value="26" style="cursor:pointer; width:90px;">
+          <input type="range" id="inspectorFontSize" min="16" max="72" value="24" style="cursor:pointer; width:90px;">
         </div>
         <button class="btn-action btn-danger" id="btnDeleteBubble">
           <i data-lucide="trash-2"></i>
@@ -190,9 +178,7 @@ function setupCanvas(imageUrl) {
   };
 }
 
-// --------------------------------------------------------------------------
-// 3. Precision Drag-To-Translate Tool
-// --------------------------------------------------------------------------
+// 3. Drag to Select Bubble Tool
 function setupDragToTranslate() {
   const canvas = appState.fabricCanvas;
   let isSelecting = false;
@@ -224,10 +210,9 @@ function setupDragToTranslate() {
       originY: 'top',
       width: 0,
       height: 0,
-      fill: 'rgba(255, 42, 75, 0.2)',
+      fill: 'rgba(255, 42, 75, 0.25)',
       stroke: '#ff2a4b',
       strokeWidth: 2,
-      strokeDashArray: [4, 4],
       selectable: false
     });
     canvas.add(selectionBox);
@@ -267,19 +252,16 @@ function setupDragToTranslate() {
   });
 }
 
-// --------------------------------------------------------------------------
-// 4. Crop Specific Bubble Region, OCR & Translate
-// --------------------------------------------------------------------------
+// 4. Crop, OCR, Translate
 async function processBubbleRegion(x, y, w, h) {
   const banner = document.getElementById('scanBanner');
   const status = document.getElementById('scanStatus');
   const selectedLang = document.getElementById('langSelector').value;
 
   banner.classList.add('active');
-  status.textContent = "Reading speech bubble...";
+  status.textContent = "Reading Japanese bubble...";
 
   try {
-    // 1. Crop the selected bubble area to a temporary offscreen canvas
     const activePage = appState.pages[appState.activePageIndex];
     const img = new Image();
     img.src = activePage.objectUrl;
@@ -301,7 +283,6 @@ async function processBubbleRegion(x, y, w, h) {
 
     const croppedBlob = await new Promise(r => cropCanvas.toBlob(r, 'image/png'));
 
-    // 2. Run OCR strictly on the cropped bubble
     const ocrModel = selectedLang === 'jpn_vert' ? 'jpn_vert' : selectedLang;
     status.textContent = "Scanning characters...";
 
@@ -312,73 +293,69 @@ async function processBubbleRegion(x, y, w, h) {
     const rawText = (result.data.text || '').replace(/\s+/g, '').trim();
 
     if (!rawText) {
-      status.textContent = "Could not read text. Type dialogue manually.";
-      addDialogueBubble(x + w / 2, y + h / 2, w, h, "TYPE HERE");
+      status.textContent = "No text found. Type English manually.";
+      addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, "TYPE HERE");
       setTimeout(() => banner.classList.remove('active'), 2500);
       return;
     }
 
-    // 3. Send to Cloudflare Workers AI for translation
-    status.textContent = `Translating: "${rawText}"...`;
-    const englishText = await translateText(rawText, selectedLang === 'jpn_vert' ? 'jpn' : selectedLang);
+    status.textContent = `Translating with AI...`;
+    const englishText = await translateText(rawText);
 
-    // 4. Put speech bubble exactly where the user drew the box!
-    addDialogueBubble(x + w / 2, y + h / 2, w, h, englishText);
+    // Overlay clean, borderless dialogue
+    addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, englishText);
 
     status.textContent = "Done!";
     setTimeout(() => banner.classList.remove('active'), 1500);
 
   } catch (err) {
-    console.error('Bubble process failed:', err);
-    status.textContent = "Scan error. Add blank bubble.";
-    setTimeout(() => banner.classList.remove('active'), 3000);
+    console.error('Scan error:', err);
+    status.textContent = `Error: ${err.message}`;
+    setTimeout(() => banner.classList.remove('active'), 4000);
   }
 }
 
-// --------------------------------------------------------------------------
-// 5. Cloudflare Translation API Helper
-// --------------------------------------------------------------------------
-async function translateText(rawText, sourceLang) {
-  try {
-    const response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: rawText, sourceLang: sourceLang })
-    });
+// 5. Cloudflare Translation Helper
+async function translateText(rawText) {
+  const response = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: rawText })
+  });
 
-    if (!response.ok) throw new Error('Translation endpoint failed');
-    const data = await response.json();
-    return data.translatedText || rawText;
-  } catch (err) {
-    console.warn('Translation fallback to raw text:', err);
-    return rawText;
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    throw new Error(data.error || 'AI Translation failed');
   }
+
+  return data.translatedText || "TRANSLATION ERROR";
 }
 
-// --------------------------------------------------------------------------
-// 6. Speech Bubble Factory & Inspector
-// --------------------------------------------------------------------------
-function addDialogueBubble(x, y, width, height, text = "SPEECH HERE") {
+// 6. Seamless White Patch Overlay (NO BLACK BORDER)
+function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
   const canvas = appState.fabricCanvas;
   if (!canvas) return;
 
-  const bubbleW = Math.max(width || 120, 90);
-  const bubbleH = Math.max(height || 60, 45);
+  const bubbleW = Math.max(width || 120, 80);
+  const bubbleH = Math.max(height || 60, 40);
 
-  const bgRect = new fabric.Rect({
-    width: bubbleW,
-    height: bubbleH,
+  // PURE WHITE BACKGROUND - ZERO BLACK BORDER
+  // This erases the old Japanese ink without slapping a square sticker over the artist's bubble
+  const eraseRect = new fabric.Rect({
+    width: bubbleW + 6,
+    height: bubbleH + 6,
     fill: '#ffffff',
-    stroke: '#000000',
-    strokeWidth: 2,
-    rx: 6,
-    ry: 6,
+    stroke: null, // NO BORDER
+    strokeWidth: 0,
+    rx: 8,
+    ry: 8,
     originX: 'center',
     originY: 'center'
   });
 
+  // Punchy, readable English manga font
   const textBox = new fabric.Textbox(text.toUpperCase(), {
-    width: bubbleW - 12,
+    width: bubbleW,
     fontSize: 22,
     fontFamily: 'Bangers',
     fill: '#000000',
@@ -388,7 +365,7 @@ function addDialogueBubble(x, y, width, height, text = "SPEECH HERE") {
     splitByGrapheme: true
   });
 
-  const group = new fabric.Group([bgRect, textBox], {
+  const group = new fabric.Group([eraseRect, textBox], {
     left: x || canvas.width / 2,
     top: y || canvas.height / 2,
     originX: 'center',
@@ -420,7 +397,6 @@ function setupObjectListeners() {
       inspector.classList.remove('active');
       return;
     }
-
     inspector.classList.add('active');
     textInput.value = obj.item(1).text;
     sizeInput.value = obj.item(1).fontSize;
@@ -453,12 +429,10 @@ function setupObjectListeners() {
   };
 }
 
-// --------------------------------------------------------------------------
-// 7. Toolbar Actions
-// --------------------------------------------------------------------------
+// 7. Buttons
 function bindEditorButtons() {
   document.getElementById('btnAddBubble').onclick = () => {
-    addDialogueBubble(null, null, 140, 70, "ENTER TEXT");
+    addCleanSpeechOverlay(null, null, 130, 60, "ENTER TEXT");
   };
 
   const btnShorts = document.getElementById('btnToggleShorts');
