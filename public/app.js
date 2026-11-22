@@ -1,10 +1,10 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Short Studio Engine (With AI Translation)
+   THE VOID ANIME // Manga Short Studio Engine (Bulletproof OCR & Translation)
    ========================================================================== */
 
 // Global State
 const appState = {
-  pages: [], // Array of { id, name, file, objectUrl }
+  pages: [],
   activePageIndex: 0,
   fabricCanvas: null,
   shortsGuideActive: false
@@ -92,7 +92,7 @@ function renderThumbnails() {
 }
 
 // --------------------------------------------------------------------------
-// 2. Editor Workspace with Language Switcher
+// 2. Editor Workspace
 // --------------------------------------------------------------------------
 function selectPage(index) {
   if (index < 0 || index >= appState.pages.length) return;
@@ -327,7 +327,7 @@ async function translateText(rawText, sourceLang) {
 }
 
 // --------------------------------------------------------------------------
-// 6. OCR Scanning & Translation Pipeline
+// 6. Robust OCR Scanning & Translation Pipeline
 // --------------------------------------------------------------------------
 async function runOcrScan() {
   const activePage = appState.pages[appState.activePageIndex];
@@ -342,32 +342,52 @@ async function runOcrScan() {
   status.textContent = `Loading ${langNames[selectedLang]} OCR model...`;
 
   try {
-    const worker = await Tesseract.createWorker(selectedLang);
-    status.textContent = `Detecting ${langNames[selectedLang]} bubbles...`;
+    // 1. Get original image natural dimensions reliably
+    const imgMeasure = new Image();
+    imgMeasure.src = activePage.objectUrl;
+    await new Promise(res => {
+      if (imgMeasure.complete) res();
+      else imgMeasure.onload = res;
+    });
+    const naturalWidth = imgMeasure.naturalWidth || 800;
 
+    // 2. Initialize Tesseract with a live progress logger
+    const worker = await Tesseract.createWorker(selectedLang, 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          status.textContent = `Scanning ${langNames[selectedLang]}: ${Math.round((m.progress || 0) * 100)}%`;
+        }
+      }
+    });
+
+    status.textContent = `Detecting dialogue bubbles...`;
     const result = await worker.recognize(activePage.file);
     await worker.terminate();
 
     const canvas = appState.fabricCanvas;
-    const scaleFactor = canvas.width / result.data.imageColor.width;
+    const scaleFactor = canvas.width / naturalWidth;
 
-    const blocks = (result.data.blocks || []).filter(b => b.text.trim().length > 1);
+    // 3. Find detected text blocks (or fallback to lines)
+    let textItems = (result.data.blocks || []).filter(b => b.text && b.text.trim().length > 1);
+    if (!textItems.length && result.data.lines) {
+      textItems = result.data.lines.filter(l => l.text && l.text.trim().length > 1);
+    }
 
-    if (blocks.length === 0) {
-      status.textContent = "No text detected. Use '+ ADD BUBBLE' manually.";
+    if (!textItems.length) {
+      status.textContent = "No text found. Use '+ ADD BUBBLE' manually.";
       setTimeout(() => banner.classList.remove('active'), 2500);
       return;
     }
 
-    // Process and translate each bubble
-    for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[i];
-      const cleanOriginal = block.text.trim();
+    // 4. Translate & overlay each detected bubble
+    for (let i = 0; i < textItems.length; i++) {
+      const item = textItems[i];
+      const cleanOriginal = item.text.trim();
       
-      status.textContent = `Translating bubble ${i + 1} of ${blocks.length}...`;
+      status.textContent = `Translating bubble ${i + 1} of ${textItems.length}...`;
       const englishText = await translateText(cleanOriginal, selectedLang);
 
-      const bbox = block.bbox;
+      const bbox = item.bbox;
       const x = ((bbox.x0 + bbox.x1) / 2) * scaleFactor;
       const y = ((bbox.y0 + bbox.y1) / 2) * scaleFactor;
       const w = (bbox.x1 - bbox.x0) * scaleFactor;
@@ -376,10 +396,10 @@ async function runOcrScan() {
       addDialogueBubble(x, y, w + 16, h + 16, englishText);
     }
 
-    status.textContent = `Done! Translated ${blocks.length} bubbles.`;
+    status.textContent = `Done! Translated ${textItems.length} bubbles.`;
     setTimeout(() => banner.classList.remove('active'), 2000);
   } catch (err) {
-    console.error(err);
+    console.error('OCR Error Details:', err);
     status.textContent = "Scan error. Use '+ ADD BUBBLE' manually.";
     setTimeout(() => banner.classList.remove('active'), 3000);
   }
@@ -415,7 +435,7 @@ function exportPageAsPng() {
 
   const dataUrl = canvas.toDataURL({
     format: 'png',
-    multiplier: 2 // 2x export resolution for crisp video quality
+    multiplier: 2
   });
 
   const a = document.createElement('a');
