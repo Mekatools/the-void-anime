@@ -7,7 +7,7 @@ export default {
     const url = new URL(request.url);
 
     // ----------------------------------------------------------------------
-    // 1. Pure Manga Page Story Summary
+    // 1. Direct Manga Page Story Summary
     // ----------------------------------------------------------------------
     if (url.pathname === '/api/summarize' && request.method === 'POST') {
       try {
@@ -19,15 +19,18 @@ export default {
             {
               role: 'system',
               content: `You are an expert manga and manhwa reader. 
-Analyze the dialogue and context from this specific manga page and provide a clean, direct STORY SUMMARY:
+Analyze the dialogue and text extracted from this specific manga page and provide a clean, direct STORY SUMMARY:
 - What is happening in this specific scene?
 - Who is speaking and what are they talking about?
-- The key plot point or revelation on this page.
-Keep it strictly focused on explaining the story on this page. Do not include YouTube video scripts, hashtags, or social media tips.`
+- The key takeaway or revelation in this panel.
+RULES: 
+- Never complain about missing dialogue.
+- Never ask the user for more information.
+- Always provide a direct, confident explanation of the scene based on whatever text or characters are detected.`
             },
             {
               role: 'user',
-              content: `Here is the dialogue from this specific page: "${text || 'Manga page scene'}". Summarize what is happening in this scene:`
+              content: `Here is the text extracted from this manga page: "${text || 'Characters talking in a manga scene'}". Summarize what is happening in this scene:`
             }
           ]
         });
