@@ -3,76 +3,212 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>THE VOID ANIME // Manga Short Studio</title>
+  <title>THE VOID ANIME // Power-Scaling & Feat HUD Studio</title>
   
-  <!-- Authentic Manga Typography: Dela Gothic One (Display), Bangers (Dialogue), Plus Jakarta Sans (UI) -->
+  <!-- Authentic Anime Typography: Dela Gothic One (Headers), Plus Jakarta Sans (UI) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Dela+Gothic+One&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Tooling: Lucide Icons, GSAP Animation, Fabric.js Canvas, Tesseract.js OCR -->
+  <!-- Lucide Icons & HTML2Canvas for 1080x1920 PNG Export -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- External Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
+  <!-- Top Header -->
   <header class="app-header">
     <div class="brand">
-      <span class="badge">01 // STUDIO</span>
+      <span class="badge">01 // HUD STUDIO</span>
       <h1>THE VOID <span class="accent-text">ANIME</span></h1>
     </div>
-    <div class="header-status">
-      <span class="status-dot"></span>
-      <span class="status-label">MEMORY MODE: ZERO STORAGE</span>
+    <div class="header-actions">
+      <button class="btn-primary" id="btnExportCard">
+        <i data-lucide="download"></i> EXPORT 9:16 SHORTS PNG
+      </button>
     </div>
   </header>
 
-  <!-- Main Workstation Layout -->
+  <!-- Workstation Layout -->
   <main class="workstation">
     
-    <!-- Left Sidebar: Thumbnail Strip & Page Switcher -->
-    <aside class="pages-sidebar" id="pagesSidebar">
-      <div class="sidebar-header">
-        <h2>PAGES (<span id="pageCount">0</span>/10)</h2>
+    <!-- Left Panel: Controls & Sliders -->
+    <aside class="controls-sidebar">
+      
+      <!-- Theme Presets -->
+      <div class="control-section">
+        <label class="section-title"><i data-lucide="palette"></i> ANIME AESTHETIC THEME</label>
+        <div class="theme-grid">
+          <button class="theme-btn active" data-theme="dbz">🔥 SAIYAN GOLD</button>
+          <button class="theme-btn" data-theme="solo">💜 SHADOW MONARCH</button>
+          <button class="theme-btn" data-theme="jjk">⚡ CURSED CYAN</button>
+          <button class="theme-btn" data-theme="haki">🩸 CONQUEROR HAKI</button>
+        </div>
       </div>
-      <div class="thumbnails-container" id="thumbnailList">
-        <div class="empty-sidebar-notice">No pages loaded</div>
+
+      <!-- Character Info -->
+      <div class="control-section">
+        <label class="section-title"><i data-lucide="user"></i> CHARACTER DETAILS</label>
+        
+        <div class="input-group">
+          <label>Character Name</label>
+          <input type="text" id="inputName" value="VEGETA" placeholder="e.g. VEGETA, GOJO, JINWOO">
+        </div>
+
+        <div class="input-group">
+          <label>Form / Saga / Title</label>
+          <input type="text" id="inputTitle" value="NAMEK SAGA (ZENKAI BOOST)" placeholder="e.g. ULTRA EGO, GEAR 5">
+        </div>
+
+        <div class="input-group">
+          <label>Power Tier Rating</label>
+          <select id="selectTier">
+            <option value="TIER: PLANETARY+">TIER: PLANETARY+</option>
+            <option value="TIER: SOLAR SYSTEM">TIER: SOLAR SYSTEM</option>
+            <option value="TIER: GALAXY LEVEL">TIER: GALAXY LEVEL</option>
+            <option value="TIER: MULTIVERSAL">TIER: MULTIVERSAL</option>
+            <option value="TIER: SPECIAL GRADE">TIER: SPECIAL GRADE</option>
+            <option value="TIER: NATIONAL LEVEL">TIER: NATIONAL LEVEL</option>
+            <option value="TIER: OUTERVERSAL">TIER: OUTERVERSAL</option>
+          </select>
+        </div>
       </div>
+
+      <!-- Power Scaling Stat Sliders -->
+      <div class="control-section">
+        <label class="section-title"><i data-lucide="activity"></i> COMBAT STATS (0 - 100)</label>
+        
+        <div class="slider-row">
+          <div class="slider-label"><span>ATTACK POTENCY</span> <b id="valStr">92</b></div>
+          <input type="range" id="sliderStr" min="10" max="100" value="92">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span>COMBAT SPEED</span> <b id="valSpd">88</b></div>
+          <input type="range" id="sliderSpd" min="10" max="100" value="88">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span>DURABILITY</span> <b id="valDur">95</b></div>
+          <input type="range" id="sliderDur" min="10" max="100" value="95">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span>BATTLE IQ</span> <b id="valIq">85</b></div>
+          <input type="range" id="sliderIq" min="10" max="100" value="85">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label"><span>HAX & ABILITY</span> <b id="valHax">90</b></div>
+          <input type="range" id="sliderHax" min="10" max="100" value="90">
+        </div>
+      </div>
+
+      <!-- Feat Citations & Abilities -->
+      <div class="control-section">
+        <label class="section-title"><i data-lucide="shield-alert"></i> KEY FEAT CITATIONS</label>
+        
+        <div class="input-group">
+          <label>Feat #1 (Manga Chapter / Moment)</label>
+          <input type="text" id="inputFeat1" value="Survived near-death beating on Namek">
+        </div>
+
+        <div class="input-group">
+          <label>Feat #2 (Multiplier / Power Scale)</label>
+          <input type="text" id="inputFeat2" value="Power level jumped from 30K to 500K+">
+        </div>
+
+        <div class="input-group">
+          <label>Signature Ability Badge</label>
+          <input type="text" id="inputAbility" value="SAIYAN TRAIT: ZENKAI BOOST">
+        </div>
+      </div>
+
+      <!-- Background Style Option -->
+      <div class="control-section">
+        <label class="section-title"><i data-lucide="layers"></i> CARD BACKGROUND</label>
+        <div class="theme-grid">
+          <button class="bg-btn active" data-bg="dark">⬛ DARK SHORT FRAME</button>
+          <button class="bg-btn" data-bg="transparent">🔲 TRANSPARENT (OVERLAY)</button>
+        </div>
+      </div>
+
     </aside>
 
-    <!-- Center Stage: Dropzone or Interactive Canvas -->
-    <section class="stage" id="stageContainer">
+    <!-- Right Panel: Live 9:16 Shorts Mobile Preview -->
+    <section class="preview-stage">
       
-      <!-- Upload Drop Zone (Visible when no images are loaded) -->
-      <div class="dropzone" id="dropZone">
-        <div class="dropzone-content">
-          <i data-lucide="upload-cloud" class="drop-icon"></i>
-          <h2>DROP MANGA PAGES HERE</h2>
-          <p>Drag & drop 1 to 10 images (PNG, JPG, WEBP) or browse your files.</p>
-          <label class="btn-primary" for="fileInput">
-            <i data-lucide="plus"></i> SELECT PAGES
-          </label>
-          <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
-          <span class="fine-print">Zero files stored. Images stay strictly inside your browser memory.</span>
+      <!-- The Exact 9:16 Frame that gets downloaded -->
+      <div class="phone-frame theme-dbz" id="cardExportTarget">
+        
+        <!-- Animated Aura Header -->
+        <div class="card-header">
+          <div class="card-badge" id="cardTier">TIER: PLANETARY+</div>
+          <div class="card-ability" id="cardAbilityBadge">SAIYAN TRAIT: ZENKAI BOOST</div>
         </div>
+
+        <!-- Character Display -->
+        <div class="card-character-info">
+          <h2 class="card-name" id="cardName">VEGETA</h2>
+          <p class="card-title" id="cardTitle">NAMEK SAGA (ZENKAI BOOST)</p>
+        </div>
+
+        <!-- Power Stat HUD Bars -->
+        <div class="card-stats">
+          <div class="stat-bar-item">
+            <div class="stat-meta"><span>ATTACK POTENCY</span><b id="cardValStr">92</b></div>
+            <div class="stat-track"><div class="stat-fill" id="cardBarStr" style="width: 92%;"></div></div>
+          </div>
+
+          <div class="stat-bar-item">
+            <div class="stat-meta"><span>COMBAT SPEED</span><b id="cardValSpd">88</b></div>
+            <div class="stat-track"><div class="stat-fill" id="cardBarSpd" style="width: 88%;"></div></div>
+          </div>
+
+          <div class="stat-bar-item">
+            <div class="stat-meta"><span>DURABILITY</span><b id="cardValDur">95</b></div>
+            <div class="stat-track"><div class="stat-fill" id="cardBarDur" style="width: 95%;"></div></div>
+          </div>
+
+          <div class="stat-bar-item">
+            <div class="stat-meta"><span>BATTLE IQ</span><b id="cardValIq">85</b></div>
+            <div class="stat-track"><div class="stat-fill" id="cardBarIq" style="width: 85%;"></div></div>
+          </div>
+
+          <div class="stat-bar-item">
+            <div class="stat-meta"><span>HAX & ABILITY</span><b id="cardValHax">90</b></div>
+            <div class="stat-track"><div class="stat-fill" id="cardBarHax" style="width: 90%;"></div></div>
+          </div>
+        </div>
+
+        <!-- Feat Citation Badges -->
+        <div class="card-feats">
+          <div class="feat-box">
+            <span class="feat-tag">PROVEN FEAT 01</span>
+            <p id="cardFeat1">Survived near-death beating on Namek</p>
+          </div>
+          <div class="feat-box">
+            <span class="feat-tag">PROVEN FEAT 02</span>
+            <p id="cardFeat2">Power level jumped from 30K to 500K+</p>
+          </div>
+        </div>
+
+        <!-- Branding Watermark -->
+        <div class="card-footer">
+          <span>THE VOID ANIME // VERIFIED CANON FEAT</span>
+        </div>
+
       </div>
 
     </section>
 
   </main>
 
-  <!-- Initialize Lucide Icons -->
   <script>
     lucide.createIcons();
   </script>
-
-  <!-- Core App Logic -->
   <script src="app.js"></script>
 </body>
 </html>
