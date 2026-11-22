@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Short Studio Engine (Bulletproof OCR & Translation)
+   THE VOID ANIME // Manga Short Studio Engine (Filtered Bubble Detection)
    ========================================================================== */
 
 // Global State
@@ -350,6 +350,7 @@ async function runOcrScan() {
       else imgMeasure.onload = res;
     });
     const naturalWidth = imgMeasure.naturalWidth || 800;
+    const naturalHeight = imgMeasure.naturalHeight || 1200;
 
     // 2. Initialize Tesseract with a live progress logger
     const worker = await Tesseract.createWorker(selectedLang, 1, {
@@ -367,19 +368,35 @@ async function runOcrScan() {
     const canvas = appState.fabricCanvas;
     const scaleFactor = canvas.width / naturalWidth;
 
-    // 3. Find detected text blocks (or fallback to lines)
-    let textItems = (result.data.blocks || []).filter(b => b.text && b.text.trim().length > 1);
+    // 3. Filter out giant boxes that cover the whole page (outer page frame)
+    // Speech bubbles are never larger than 60% of the entire page width or height
+    const maxAllowedWidth = naturalWidth * 0.60;
+    const maxAllowedHeight = naturalHeight * 0.60;
+
+    let textItems = (result.data.blocks || []).filter(b => {
+      if (!b.text || b.text.trim().length <= 1) return false;
+      const w = b.bbox.x1 - b.bbox.x0;
+      const h = b.bbox.y1 - b.bbox.y0;
+      return w < maxAllowedWidth && h < maxAllowedHeight && w > 25 && h > 25;
+    });
+
+    // If blocks were too strict, try lines with the same safety filter
     if (!textItems.length && result.data.lines) {
-      textItems = result.data.lines.filter(l => l.text && l.text.trim().length > 1);
+      textItems = result.data.lines.filter(l => {
+        if (!l.text || l.text.trim().length <= 1) return false;
+        const w = l.bbox.x1 - l.bbox.x0;
+        const h = l.bbox.y1 - l.bbox.y0;
+        return w < maxAllowedWidth && h < maxAllowedHeight && w > 20 && h > 20;
+      });
     }
 
     if (!textItems.length) {
-      status.textContent = "No text found. Use '+ ADD BUBBLE' manually.";
+      status.textContent = "No small bubbles found. Click '+ ADD BUBBLE'!";
       setTimeout(() => banner.classList.remove('active'), 2500);
       return;
     }
 
-    // 4. Translate & overlay each detected bubble
+    // 4. Translate & overlay each real bubble
     for (let i = 0; i < textItems.length; i++) {
       const item = textItems[i];
       const cleanOriginal = item.text.trim();
