@@ -19,19 +19,20 @@ export default {
           });
         }
 
+        // Must use official 2-letter ISO codes: 'ja', 'ko', 'zh', 'en'
         const langMap = {
-          jpn: 'japanese',
-          kor: 'korean',
-          chi_sim: 'chinese'
+          jpn: 'ja',
+          kor: 'ko',
+          chi_sim: 'zh'
         };
 
-        const sourceLang = langMap[sourceLangCode] || 'japanese';
+        const sourceLang = langMap[sourceLangCode] || 'ja';
 
-        // Run Cloudflare Workers AI Multilingual Model
+        // Run Cloudflare Workers AI Multilingual Model with 2-letter codes
         const aiResponse = await env.AI.run('@cf/meta/m2m100-1.2b', {
           text: rawText,
           source_lang: sourceLang,
-          target_lang: 'english'
+          target_lang: 'en'
         });
 
         const translated = aiResponse.translated_text || rawText;
