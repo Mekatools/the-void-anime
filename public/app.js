@@ -307,4 +307,228 @@ async function processBubbleRegion(x, y, w, h) {
     ctx.drawImage(
       img,
       x * scaleFactor, y * scaleFactor, w * scaleFactor, h * scaleFactor,
-      0, 0, cropCanvas.width, cropCanvas.
+      0, 0, cropCanvas.width, cropCanvas.height
+    );
+
+    const croppedBlob = await new Promise(r => cropCanvas.toBlob(r, 'image/png'));
+    const ocrModel = selectedLang === 'jpn_vert' ? 'jpn_vert' : selectedLang;
+    status.textContent = "Scanning characters...";
+
+    const worker = await Tesseract.createWorker(ocrModel);
+    const result = await worker.recognize(croppedBlob);
+    await worker.terminate();
+
+    const rawText = (result.data.text || '').replace(/\s+/g, '').trim();
+
+    if (!rawText) {
+      status.textContent = "No text found. Type English manually.";
+      addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, "TYPE HERE");
+      setTimeout(() => banner.classList.remove('active'), 2500);
+      return;
+    }
+
+    status.textContent = "Translating with Llama 3.2...";
+    const englishText = await translateText(rawText);
+
+    // Save detected line for the page summary
+    appState.allDetectedDialogue.push(englishText);
+
+    // Overlay clean, borderless dialogue
+    addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, englishText);
+
+    status.textContent = "Done!";
+    setTimeout(() => banner.classList.remove('active'), 1500);
+
+  } catch (err) {
+    console.error('Scan error:', err);
+    status.textContent = `Error: ${err.message}`;
+    setTimeout(() => banner.classList.remove('active'), 4000);
+  }
+}
+
+async function translateText(rawText) {
+  const response = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: rawText })
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.error) throw new Error(data.error || 'AI Translation failed');
+  return data.translatedText || "TRANSLATION ERROR";
+}
+
+// 5. Speech Bubble Typesetting (Border-free + Clean Word Wrapping)
+function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
+  const canvas = appState.fabricCanvas;
+  if (!canvas) return;
+
+  const bubbleW = Math.max(width || 120, 80);
+  const bubbleH = Math.max(height || 60, 40);
+
+  const eraseRect = new fabric.Rect({
+    width: bubbleW + 6,
+    height: bubbleH + 6,
+    fill: '#ffffff',
+    stroke: null,
+    strokeWidth: 0,
+    rx: 8,
+    ry: 8,
+    originX: 'center',
+    originY: 'center'
+  });
+
+  const textBox = new fabric.Textbox(text.toUpperCase(), {
+    width: bubbleW,
+    fontSize: 22,
+    fontFamily: 'Bangers',
+    fill: '#000000',
+    textAlign: 'center',
+    originX: 'center',
+    originY: 'center',
+    splitByGrapheme: false
+  });
+
+  const group = new fabric.Group([eraseRect, textBox], {
+    left: x || canvas.width / 2,
+    top: y || canvas.height / 2,
+    originX: 'center',
+    originY: 'center',
+    isBubble: true
+  });
+
+  canvas.add(group);
+  canvas.setActiveObject(group);
+  canvas.renderAll();
+}
+
+function setupObjectListeners() {
+  const canvas = appState.fabricCanvas;
+  const inspector = document.getElementById('bubbleInspector');
+  const textInput = document.getElementById('inspectorText');
+  const sizeInput = document.getElementById('inspectorFontSize');
+  const deleteBtn = document.getElementById('btnDeleteBubble');
+
+  canvas.on('selection:created', onSelect);
+  canvas.on('selection:updated', onSelect);
+  canvas.on('selection:cleared', () => {
+    if (inspector) inspector.classList.remove('active');
+  });
+
+  function onSelect(e) {
+    const obj = e.selected ? e.selected[0] : null;
+    if (!obj || !obj.isBubble) {
+      inspector.classList.remove('active');
+      return;
+    }
+    inspector.classList.add('active');
+    textInput.value = obj.item(1).text;
+    sizeInput.value = obj.item(1).fontSize;
+  }
+
+  textInput.oninput = (e) => {
+    const active = canvas.getActiveObject();
+    if (active && active.isBubble) {
+      active.item(1).set('text', e.target.value.toUpperCase());
+      canvas.renderAll();
+    }
+  };
+
+  sizeInput.oninput = (e) => {
+    const active = canvas.getActiveObject();
+    if (active && active.isBubble) {
+      active.item(1).set('fontSize', parseInt(e.target.value, 10));
+      canvas.renderAll();
+    }
+  };
+
+  deleteBtn.onclick = () => {
+    const active = canvas.getActiveObject();
+    if (active) {
+      canvas.remove(active);
+      canvas.discardActiveObject();
+      inspector.classList.remove('active');
+      canvas.renderAll();
+    }
+  };
+}
+
+// 6. Pure Page Summary Modal
+function bindSummaryModal() {
+  const modal = document.getElementById('summaryModal');
+  const btnOpen = document.getElementById('btnOpenSummaryModal');
+  const btnClose = document.getElementById('btnCloseModal');
+  const btnCopy = document.getElementById('btnCopySummary');
+  const content = document.getElementById('summaryContent');
+
+  if (!btnOpen) return;
+
+  btnOpen.onclick = async () => {
+    modal.style.display = 'flex';
+    content.textContent = "⏳ Reading page dialogue and generating story summary...";
+
+    try {
+      const dialogueContext = appState.allDetectedDialogue.join(' | ') || 'Characters in a manga panel having a conversation';
+      
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: dialogueContext })
+      });
+
+      const data = await response.json();
+      content.textContent = data.summary || 'Could not generate summary.';
+    } catch (err) {
+      content.textContent = `Error: ${err.message}`;
+    }
+  };
+
+  btnCloseModal.onclick = () => { modal.style.display = 'none'; };
+
+  btnCopy.onclick = () => {
+    navigator.clipboard.writeText(content.textContent);
+    btnCopy.innerHTML = '<i data-lucide="check"></i> COPIED!';
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      btnCopy.innerHTML = '<i data-lucide="copy"></i> COPY SUMMARY';
+      if (window.lucide) lucide.createIcons();
+    }, 2000);
+  };
+}
+
+// 7. Toolbar Buttons
+function bindEditorButtons() {
+  document.getElementById('btnAddBubble').onclick = () => {
+    addCleanSpeechOverlay(null, null, 130, 60, "ENTER TEXT");
+  };
+
+  const btnShorts = document.getElementById('btnToggleShorts');
+  const overlay = document.getElementById('shortsOverlay');
+  btnShorts.onclick = () => {
+    appState.shortsGuideActive = !appState.shortsGuideActive;
+    btnShorts.classList.toggle('active', appState.shortsGuideActive);
+    overlay.classList.toggle('active', appState.shortsGuideActive);
+  };
+
+  document.getElementById('btnExport').onclick = exportPageAsPng;
+}
+
+function exportPageAsPng() {
+  const canvas = appState.fabricCanvas;
+  if (!canvas) return;
+
+  canvas.discardActiveObject();
+  canvas.renderAll();
+
+  const dataUrl = canvas.toDataURL({
+    format: 'png',
+    multiplier: 2
+  });
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `THE_VOID_PAGE_${appState.activePageIndex + 1}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
