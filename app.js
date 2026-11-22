@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Short Studio Engine (Japanese / Korean / Chinese)
+   THE VOID ANIME // Manga Short Studio Engine (With AI Translation)
    ========================================================================== */
 
 // Global State
@@ -7,8 +7,7 @@ const appState = {
   pages: [], // Array of { id, name, file, objectUrl }
   activePageIndex: 0,
   fabricCanvas: null,
-  shortsGuideActive: false,
-  selectedLang: 'jpn' // Default to Japanese
+  shortsGuideActive: false
 };
 
 // DOM References
@@ -111,7 +110,7 @@ function initEditorWorkspace(page) {
       <!-- Toolbar -->
       <div class="editor-toolbar">
         <div class="toolbar-group">
-          <!-- Language Selector (Japanese, Korean Manhwa, Chinese) -->
+          <!-- Language Selector -->
           <select id="langSelector" class="btn-secondary" style="padding: 0.55rem 0.8rem; cursor: pointer;">
             <option value="jpn">🇯🇵 JAPANESE (MANGA)</option>
             <option value="kor">🇰🇷 KOREAN (MANHWA)</option>
@@ -119,7 +118,7 @@ function initEditorWorkspace(page) {
           </select>
 
           <button class="btn-primary" id="btnScanOcr">
-            <i data-lucide="scan-text"></i> AUTO-DETECT BUBBLES
+            <i data-lucide="scan-text"></i> AUTO-TRANSLATE BUBBLES
           </button>
           <button class="btn-secondary" id="btnAddBubble">
             <i data-lucide="plus-circle"></i> + ADD BUBBLE
@@ -136,7 +135,7 @@ function initEditorWorkspace(page) {
         </div>
       </div>
 
-      <!-- Scanning Banner -->
+      <!-- Scanning & Translation Progress Banner -->
       <div class="scan-progress-banner" id="scanBanner">
         <i data-lucide="loader-2" class="spin"></i>
         <span id="scanStatus">Scanning dialogue...</span>
@@ -308,7 +307,27 @@ function addDialogueBubble(x, y, width, height, text = "SPEECH HERE") {
 }
 
 // --------------------------------------------------------------------------
-// 5. Multi-Language OCR (Japanese / Korean / Chinese)
+// 5. Cloudflare Translation API Helper
+// --------------------------------------------------------------------------
+async function translateText(rawText, sourceLang) {
+  try {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rawText, sourceLang: sourceLang })
+    });
+
+    if (!response.ok) throw new Error('Translation endpoint failed');
+    const data = await response.json();
+    return data.translatedText || rawText;
+  } catch (err) {
+    console.warn('Translation fallback to raw text:', err);
+    return rawText;
+  }
+}
+
+// --------------------------------------------------------------------------
+// 6. OCR Scanning & Translation Pipeline
 // --------------------------------------------------------------------------
 async function runOcrScan() {
   const activePage = appState.pages[appState.activePageIndex];
@@ -324,7 +343,7 @@ async function runOcrScan() {
 
   try {
     const worker = await Tesseract.createWorker(selectedLang);
-    status.textContent = `Scanning ${langNames[selectedLang]} dialogue bubbles...`;
+    status.textContent = `Detecting ${langNames[selectedLang]} bubbles...`;
 
     const result = await worker.recognize(activePage.file);
     await worker.terminate();
@@ -332,34 +351,42 @@ async function runOcrScan() {
     const canvas = appState.fabricCanvas;
     const scaleFactor = canvas.width / result.data.imageColor.width;
 
-    const blocks = result.data.blocks || [];
-    let detectedCount = 0;
+    const blocks = (result.data.blocks || []).filter(b => b.text.trim().length > 1);
 
-    blocks.forEach(block => {
-      const cleanText = block.text.trim();
-      if (cleanText.length > 1) {
-        detectedCount++;
-        const bbox = block.bbox;
-        const x = (bbox.x0 + bbox.x1) / 2 * scaleFactor;
-        const y = (bbox.y0 + bbox.y1) / 2 * scaleFactor;
-        const w = (bbox.x1 - bbox.x0) * scaleFactor;
-        const h = (bbox.y1 - bbox.y0) * scaleFactor;
+    if (blocks.length === 0) {
+      status.textContent = "No text detected. Use '+ ADD BUBBLE' manually.";
+      setTimeout(() => banner.classList.remove('active'), 2500);
+      return;
+    }
 
-        addDialogueBubble(x, y, w + 16, h + 16, cleanText);
-      }
-    });
+    // Process and translate each bubble
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      const cleanOriginal = block.text.trim();
+      
+      status.textContent = `Translating bubble ${i + 1} of ${blocks.length}...`;
+      const englishText = await translateText(cleanOriginal, selectedLang);
 
-    status.textContent = `Done! Found ${detectedCount} bubbles.`;
+      const bbox = block.bbox;
+      const x = ((bbox.x0 + bbox.x1) / 2) * scaleFactor;
+      const y = ((bbox.y0 + bbox.y1) / 2) * scaleFactor;
+      const w = (bbox.x1 - bbox.x0) * scaleFactor;
+      const h = (bbox.y1 - bbox.y0) * scaleFactor;
+
+      addDialogueBubble(x, y, w + 16, h + 16, englishText);
+    }
+
+    status.textContent = `Done! Translated ${blocks.length} bubbles.`;
     setTimeout(() => banner.classList.remove('active'), 2000);
   } catch (err) {
     console.error(err);
-    status.textContent = "Scan failed. Use '+ ADD BUBBLE' manually.";
+    status.textContent = "Scan error. Use '+ ADD BUBBLE' manually.";
     setTimeout(() => banner.classList.remove('active'), 3000);
   }
 }
 
 // --------------------------------------------------------------------------
-// 6. Toolbar Actions (9:16 Shorts Toggle & PNG Export)
+// 7. Toolbar Actions (9:16 Shorts Toggle & PNG Export)
 // --------------------------------------------------------------------------
 function bindEditorButtons() {
   document.getElementById('btnScanOcr').onclick = runOcrScan;
@@ -388,7 +415,7 @@ function exportPageAsPng() {
 
   const dataUrl = canvas.toDataURL({
     format: 'png',
-    multiplier: 2
+    multiplier: 2 // 2x export resolution for crisp video quality
   });
 
   const a = document.createElement('a');
