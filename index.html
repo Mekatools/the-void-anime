@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THE VOID ANIME // Manga Short Studio</title>
+  
+  <!-- Google Fonts: Dela Gothic One (Manga Display) + Plus Jakarta Sans (Clean Body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons & GSAP Animation (Loaded safely via CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- External Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="badge">01 // STUDIO</span>
+      <h1>THE VOID <span class="accent-text">ANIME</span></h1>
+    </div>
+    <div class="header-status">
+      <span class="status-dot"></span>
+      <span class="status-label">MEMORY MODE: ZERO STORAGE</span>
+    </div>
+  </header>
+
+  <!-- Main Workstation Layout -->
+  <main class="workstation">
+    
+    <!-- Left Sidebar: Thumbnail Strip & Page Switcher -->
+    <aside class="pages-sidebar" id="pagesSidebar">
+      <div class="sidebar-header">
+        <h2>PAGES (<span id="pageCount">0</span>/10)</h2>
+      </div>
+      <div class="thumbnails-container" id="thumbnailList">
+        <div class="empty-sidebar-notice">No pages loaded</div>
+      </div>
+    </aside>
+
+    <!-- Center Stage: Dropzone or Canvas Workspace -->
+    <section class="stage" id="stageContainer">
+      
+      <!-- Upload Drop Zone (Shown by default) -->
+      <div class="dropzone" id="dropZone">
+        <div class="dropzone-border"></div>
+        <div class="dropzone-content">
+          <i data-lucide="upload-cloud" class="drop-icon"></i>
+          <h2>DROP MANGA PAGES HERE</h2>
+          <p>Drag & drop 1 to 10 images (PNG, JPG, WEBP) or browse your files.</p>
+          <label class="btn-primary" for="fileInput">
+            <i data-lucide="plus"></i> SELECT PAGES
+          </label>
+          <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+          <span class="fine-print">Zero files stored. Images stay strictly inside your browser memory.</span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Initialize Lucide Icons -->
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
