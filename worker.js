@@ -1,12 +1,11 @@
 /* ==========================================================================
-   THE VOID ANIME // Cloudflare Edge Worker (Powered by Llama 3.1)
+   THE VOID ANIME // Translation Worker (Cloudflare Workers AI)
    ========================================================================== */
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // 1. Handle Translation API
     if (url.pathname === '/api/translate' && request.method === 'POST') {
       try {
         const body = await request.json();
@@ -18,24 +17,16 @@ export default {
           });
         }
 
-        // Use Meta Llama 3.1-8B Instruct on Cloudflare GPUs
+        // Run Cloudflare Workers AI with explicit translation instructions
         const aiResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert manga and manhwa translator. Translate the given dialogue directly into natural, punchy English suitable for a comic speech bubble. Output ONLY the translated English text, with no explanations, no notes, and no quotation marks.'
-            },
-            {
-              role: 'user',
-              content: `Translate this text to English: ${rawText}`
-            }
-          ]
+          prompt: `Translate this comic dialogue directly to English. Output ONLY the English translation, no notes, no quotes, no explanations:\n\n${rawText}`
         });
 
-        const translated = (aiResponse.response || rawText).trim();
+        let english = (aiResponse.response || '').trim();
+        english = english.replace(/^["']|["']$/g, ''); // strip quotes
 
         return new Response(JSON.stringify({
-          translatedText: translated.replace(/^["']|["']$/g, '') // Strip stray quotes
+          translatedText: english
         }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -47,7 +38,6 @@ export default {
       }
     }
 
-    // 2. Otherwise serve the frontend files from /public
     return env.ASSETS.fetch(request);
   }
 };
