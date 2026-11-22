@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>THE VOID ANIME // Manga Short Studio</title>
   
-  <!-- Google Fonts: Dela Gothic One (Manga Display) + Plus Jakarta Sans (Clean Body) -->
+  <!-- Authentic Manga Typography: Dela Gothic One (Display), Bangers (Dialogue), Plus Jakarta Sans (UI) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Dela+Gothic+One&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   
-  <!-- Lucide Icons & GSAP Animation (Loaded safely via CDN) -->
+  <!-- Tooling: Lucide Icons, GSAP Animation, Fabric.js Canvas, Tesseract.js OCR -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <!-- External Stylesheet -->
   <link rel="stylesheet" href="style.css">
@@ -44,12 +46,11 @@
       </div>
     </aside>
 
-    <!-- Center Stage: Dropzone or Canvas Workspace -->
+    <!-- Center Stage: Dropzone or Interactive Canvas -->
     <section class="stage" id="stageContainer">
       
-      <!-- Upload Drop Zone (Shown by default) -->
+      <!-- Upload Drop Zone (Visible when no images are loaded) -->
       <div class="dropzone" id="dropZone">
-        <div class="dropzone-border"></div>
         <div class="dropzone-content">
           <i data-lucide="upload-cloud" class="drop-icon"></i>
           <h2>DROP MANGA PAGES HERE</h2>
@@ -70,5 +71,8 @@
   <script>
     lucide.createIcons();
   </script>
+
+  <!-- Core App Logic -->
+  <script src="app.js"></script>
 </body>
 </html>
