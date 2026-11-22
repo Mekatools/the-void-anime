@@ -3,7 +3,6 @@
    ========================================================================== */
 
 :root {
-  /* Intentional Color Palette: High-contrast ink with Crimson accent */
   --bg-deep: #0a0b0e;
   --bg-surface: #12141a;
   --bg-elevated: #1a1d26;
@@ -17,13 +16,11 @@
   --accent-tint: rgba(255, 42, 75, 0.12);
   --success-green: #00e599;
 
-  /* Typography */
   --font-display: 'Dela Gothic One', sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-bubble: 'Bangers', 'Impact', sans-serif;
+  --font-bubble: 'Bangers', cursive, sans-serif;
 }
 
-/* Base Reset */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -41,7 +38,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Manga Screen Tone Texture (Subtle Dot Grid) */
+/* Subtle Manga Halftone Texture */
 body::before {
   content: '';
   position: fixed;
@@ -58,12 +55,12 @@ body::before {
    -------------------------------------------------------------------------- */
 .app-header {
   position: relative;
-  z-index: 10;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background-color: rgba(10, 11, 14, 0.9);
+  padding: 0.85rem 1.75rem;
+  background-color: rgba(10, 11, 14, 0.95);
   backdrop-filter: blur(12px);
   border-bottom: 2px solid var(--border-subtle);
 }
@@ -71,14 +68,14 @@ body::before {
 .brand {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .badge {
   font-size: 0.65rem;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   font-weight: 800;
-  padding: 0.35rem 0.6rem;
+  padding: 0.3rem 0.5rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border-ink);
   color: var(--accent-crimson);
@@ -87,7 +84,7 @@ body::before {
 
 .brand h1 {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   letter-spacing: 0.05em;
   margin: 0;
 }
@@ -119,11 +116,11 @@ body::before {
    -------------------------------------------------------------------------- */
 .workstation {
   position: relative;
-  z-index: 1;
+  z-index: 10;
   flex: 1;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  height: calc(100vh - 65px);
+  grid-template-columns: 260px 1fr;
+  height: calc(100vh - 60px);
   overflow: hidden;
 }
 
@@ -139,21 +136,21 @@ body::before {
 }
 
 .sidebar-header {
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar-header h2 {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
 .thumbnails-container {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -163,7 +160,7 @@ body::before {
   font-size: 0.85rem;
   color: var(--text-muted);
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 2.5rem 1rem;
   border: 1px dashed var(--border-subtle);
   border-radius: 4px;
 }
@@ -185,7 +182,7 @@ body::before {
 
 .thumbnail-card img {
   width: 100%;
-  height: 120px;
+  height: 110px;
   object-fit: cover;
   display: block;
 }
@@ -195,8 +192,8 @@ body::before {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(10, 11, 14, 0.85);
-  font-size: 0.7rem;
+  background: rgba(10, 11, 14, 0.88);
+  font-size: 0.68rem;
   font-weight: 700;
   padding: 0.25rem 0.5rem;
   display: flex;
@@ -204,22 +201,21 @@ body::before {
 }
 
 /* --------------------------------------------------------------------------
-   Stage / Dropzone
+   Center Stage & Drop Zone
    -------------------------------------------------------------------------- */
 .stage {
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  background: #08090c;
 }
 
 .dropzone {
-  position: relative;
-  max-width: 620px;
-  width: 100%;
+  max-width: 580px;
+  width: 90%;
   padding: 3.5rem 2rem;
   background: var(--bg-surface);
   border-radius: 8px;
@@ -242,77 +238,229 @@ body::before {
 }
 
 .drop-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   color: var(--accent-crimson);
 }
 
 .dropzone h2 {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   letter-spacing: 0.05em;
 }
 
 .dropzone p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
   max-width: 400px;
   line-height: 1.5;
 }
 
 .fine-print {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  letter-spacing: 0.03em;
+}
+
+/* --------------------------------------------------------------------------
+   Editor Workspace & Canvas
+   -------------------------------------------------------------------------- */
+.editor-workspace {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Action Toolbar */
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 2px solid var(--border-subtle);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  z-index: 15;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.canvas-viewport {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.canvas-wrapper {
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  border: 2px solid var(--border-ink);
+}
+
+/* 9:16 YouTube Shorts Framing Overlay */
+.shorts-frame-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  aspect-ratio: 9 / 16;
+  border: 2px dashed #00e599;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  z-index: 50;
+  display: none;
+}
+
+.shorts-frame-overlay.active {
+  display: block;
+}
+
+.shorts-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #00e599;
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* Floating Bubble Inspector Panel */
+.bubble-inspector {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 20, 26, 0.95);
+  backdrop-filter: blur(12px);
+  border: 2px solid var(--border-ink);
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  display: none;
+  align-items: center;
+  gap: 1rem;
+  z-index: 60;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+}
+
+.bubble-inspector.active {
+  display: flex;
+}
+
+.inspector-input {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  color: var(--paper-white);
+  padding: 0.45rem 0.75rem;
+  border-radius: 3px;
+  font-family: var(--font-bubble);
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  min-width: 200px;
+}
+
+.inspector-input:focus {
+  outline: none;
+  border-color: var(--accent-crimson);
+}
+
+/* OCR Progress Banner */
+.scan-progress-banner {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent-crimson);
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--paper-white);
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 70;
+  box-shadow: 0 4px 20px rgba(255, 42, 75, 0.3);
+}
+
+.scan-progress-banner.active {
+  display: flex;
 }
 
 /* --------------------------------------------------------------------------
    Buttons & Controls
    -------------------------------------------------------------------------- */
-.btn-primary {
+.btn-primary, .btn-secondary, .btn-action {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  background: var(--accent-crimson);
-  color: var(--paper-white);
+  gap: 0.5rem;
   font-family: var(--font-body);
   font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  padding: 0.85rem 1.8rem;
-  border: none;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 1.1rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent-crimson);
+  color: var(--paper-white);
 }
 
 .btn-primary:hover {
   background: var(--accent-crimson-hover);
 }
 
-/* --------------------------------------------------------------------------
-   Mobile Adjustments
-   -------------------------------------------------------------------------- */
-@media (max-width: 860px) {
-  .workstation {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-    height: auto;
-  }
-  
-  .pages-sidebar {
-    height: 150px;
-    border-right: none;
-    border-bottom: 2px solid var(--border-subtle);
-  }
-  
-  .thumbnails-container {
-    flex-direction: row;
-    overflow-x: auto;
-  }
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--paper-white);
+  border: 1px solid var(--border-ink);
+}
 
-  .thumbnail-card img {
-    width: 100px;
-    height: 90px;
-  }
+.btn-secondary:hover {
+  background: var(--border-ink);
+}
+
+.btn-action {
+  background: transparent;
+  color: var(--paper-white);
+  border: 1px solid var(--border-ink);
+}
+
+.btn-action:hover {
+  border-color: var(--accent-crimson);
+}
+
+.btn-action.active {
+  background: var(--accent-tint);
+  border-color: var(--accent-crimson);
+  color: var(--accent-crimson);
+}
+
+.btn-danger {
+  background: rgba(255, 42, 75, 0.15);
+  color: var(--accent-crimson);
+  border: 1px solid var(--accent-crimson);
+}
+
+.btn-danger:hover {
+  background: var(--accent-crimson);
+  color: #fff;
 }
