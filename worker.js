@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THE VOID ANIME // Translation & Shorts Script AI Engine
+   THE VOID ANIME // Pure Manga Translation & Page Summary Engine
    ========================================================================== */
 
 export default {
@@ -7,7 +7,7 @@ export default {
     const url = new URL(request.url);
 
     // ----------------------------------------------------------------------
-    // 1. YouTube Shorts Script & Scene Summary Generator
+    // 1. Pure Manga Page Story Summary
     // ----------------------------------------------------------------------
     if (url.pathname === '/api/summarize' && request.method === 'POST') {
       try {
@@ -18,21 +18,22 @@ export default {
           messages: [
             {
               role: 'system',
-              content: `You are an expert YouTube Shorts & TikTok anime explainer scriptwriter. 
-Analyze the provided manga scene dialogue and generate an engaging, viral breakdown formatted with:
-1. 🎬 SCENE BREAKDOWN (1-2 sentences explaining what is happening).
-2. 🎙️ 30-SECOND SHORTS VOICEOVER SCRIPT (Catchy hook, conversational tone, easy to speak aloud).
-3. 🏷️ VIRAL SHORTS TITLE & HASHTAGS.`
+              content: `You are an expert manga and manhwa reader. 
+Analyze the dialogue and context from this specific manga page and provide a clean, direct STORY SUMMARY:
+- What is happening in this specific scene?
+- Who is speaking and what are they talking about?
+- The key plot point or revelation on this page.
+Keep it strictly focused on explaining the story on this page. Do not include YouTube video scripts, hashtags, or social media tips.`
             },
             {
               role: 'user',
-              content: `Here is the dialogue/context from this manga page: "${text || 'Manga scene analysis'}". Write the summary and Shorts voiceover script:`
+              content: `Here is the dialogue from this specific page: "${text || 'Manga page scene'}". Summarize what is happening in this scene:`
             }
           ]
         });
 
         return new Response(JSON.stringify({
-          script: response.response || 'Could not generate summary.'
+          summary: response.response || 'Could not generate summary.'
         }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -62,7 +63,7 @@ Analyze the provided manga scene dialogue and generate an engaging, viral breakd
           messages: [
             {
               role: 'system',
-              content: 'You are an expert manga translator. Translate the provided Japanese/Korean dialogue directly into clean, natural English for a speech bubble. Output ONLY the English translation, no notes, no quotes.'
+              content: 'You are an expert manga translator. Translate the provided Japanese/Korean dialogue directly into clean, natural English for a comic speech bubble. Output ONLY the English translation, no notes, no quotes.'
             },
             {
               role: 'user',
