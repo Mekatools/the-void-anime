@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THE VOID ANIME // Pure Manga Translation & Page Summary Engine
+   THE VOID ANIME // Manga Explainer & Translation Engine
    ========================================================================== */
 
 export default {
@@ -7,7 +7,7 @@ export default {
     const url = new URL(request.url);
 
     // ----------------------------------------------------------------------
-    // 1. Direct Manga Page Story Summary
+    // 1. Authentic Manga Explainer Recap Engine
     // ----------------------------------------------------------------------
     if (url.pathname === '/api/summarize' && request.method === 'POST') {
       try {
@@ -18,25 +18,37 @@ export default {
           messages: [
             {
               role: 'system',
-              content: `You are an expert manga and manhwa reader. 
-Analyze the dialogue and text extracted from this specific manga page and provide a clean, direct STORY SUMMARY:
-- What is happening in this specific scene?
-- Who is speaking and what are they talking about?
-- The key takeaway or revelation in this panel.
-RULES: 
-- Never complain about missing dialogue.
-- Never ask the user for more information.
-- Always provide a direct, confident explanation of the scene based on whatever text or characters are detected.`
+              content: `You are a top anime and manga recap YouTuber (like an explainer channel).
+Your job is to explain what is happening on this manga page in a natural, engaging, and hype storytelling tone.
+
+BANNED PHRASES:
+- Do NOT say "In this scene, a conversation is taking place..."
+- Do NOT say "The dialogue appears to be fragmented..."
+- Do NOT say "The key takeaway or revelation is..."
+- Do NOT sound like an academic robot.
+
+Write the explanation in this clean, punchy format:
+
+🔥 WHAT'S ACTUALLY GOING DOWN:
+(Explain the scene in 2-3 casual, exciting sentences: who is here, where they are, and what situation is happening.)
+
+💬 WHAT THEY'RE TALKING ABOUT:
+(Break down the conversation in plain, easy-to-understand English so viewers immediately get the joke or dialogue.)
+
+💡 THE DETAILS & LORE:
+(Explain the trivia, power, gag, or hidden detail behind the scene that viewers would find cool.)
+
+Tone: Casual, confident, storytelling narrator.`
             },
             {
               role: 'user',
-              content: `Here is the text extracted from this manga page: "${text || 'Characters talking in a manga scene'}". Summarize what is happening in this scene:`
+              content: `Explain this manga page to my viewers like a real manga YouTuber. Here is the text from the page: "${text || 'Manga characters discussing a scene'}"`
             }
           ]
         });
 
         return new Response(JSON.stringify({
-          summary: response.response || 'Could not generate summary.'
+          summary: response.response || 'Could not generate explanation.'
         }), {
           headers: { 'Content-Type': 'application/json' }
         });
