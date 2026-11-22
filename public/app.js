@@ -1,12 +1,13 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Studio (Seamless Bubble Erase & Clean Typesetting)
+   THE VOID ANIME // Manga Short Studio (With Script & Summary Generator)
    ========================================================================== */
 
 const appState = {
   pages: [],
   activePageIndex: 0,
   fabricCanvas: null,
-  shortsGuideActive: false
+  shortsGuideActive: false,
+  allDetectedDialogue: []
 };
 
 const dropZone = document.getElementById('dropZone');
@@ -81,7 +82,7 @@ function selectPage(index) {
 function initEditorWorkspace(page) {
   stageContainer.innerHTML = `
     <div class="editor-workspace">
-      <!-- Toolbar -->
+      <!-- Top Action Toolbar -->
       <div class="editor-toolbar">
         <div class="toolbar-group">
           <select id="langSelector" class="btn-secondary" style="padding: 0.55rem 0.8rem; cursor: pointer;">
@@ -91,11 +92,16 @@ function initEditorWorkspace(page) {
           </select>
 
           <button class="btn-primary" id="btnDragTranslate">
-            <i data-lucide="crop"></i> DRAG OVER BUBBLE TO TRANSLATE
+            <i data-lucide="crop"></i> DRAG OVER BUBBLE
           </button>
           
           <button class="btn-secondary" id="btnAddBubble">
             <i data-lucide="plus-circle"></i> + BLANK TEXT
+          </button>
+
+          <!-- NEW: Shorts Script & Scene Summary Button -->
+          <button class="btn-primary" id="btnOpenScriptModal" style="background: #ffb800; color: #000;">
+            <i data-lucide="sparkles"></i> SHORTS SCRIPT & SUMMARY
           </button>
         </div>
 
@@ -115,7 +121,7 @@ function initEditorWorkspace(page) {
         <span id="scanStatus">Ready</span>
       </div>
 
-      <!-- Canvas -->
+      <!-- Canvas Area -->
       <div class="canvas-viewport" id="viewport">
         <div class="canvas-wrapper" id="canvasWrapper">
           <canvas id="mangaCanvas"></canvas>
@@ -136,12 +142,38 @@ function initEditorWorkspace(page) {
           <i data-lucide="trash-2"></i>
         </button>
       </div>
+
+      <!-- SHORTS SCRIPT & SUMMARY MODAL -->
+      <div id="scriptModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#12141a; border:2px solid #ffb800; border-radius:8px; max-width:650px; width:90%; padding:2rem; max-height:85vh; display:flex; flex-direction:column; gap:1.25rem; box-shadow:0 20px 50px rgba(0,0,0,0.8);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #262a36; padding-bottom:0.75rem;">
+            <h2 style="font-family:'Dela Gothic One', sans-serif; font-size:1.1rem; color:#ffb800; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="video"></i> SHORTS EXPLAINER SCRIPT & SUMMARY
+            </h2>
+            <button id="btnCloseModal" style="background:transparent; border:none; color:#8b92a5; font-size:1.5rem; cursor:pointer;">&times;</button>
+          </div>
+          
+          <div id="scriptContent" style="flex:1; overflow-y:auto; font-family:'Plus Jakarta Sans', sans-serif; font-size:0.95rem; line-height:1.6; color:#f5f6fa; white-space:pre-wrap; background:#0a0b0e; padding:1.25rem; border-radius:4px; border:1px solid #262a36;">
+            Generating your YouTube Shorts voiceover script and scene breakdown...
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+            <button class="btn-secondary" id="btnCopyScript">
+              <i data-lucide="copy"></i> COPY SCRIPT
+            </button>
+            <button class="btn-primary" id="btnRegenScript" style="background:#ffb800; color:#000;">
+              <i data-lucide="refresh-cw"></i> RE-GENERATE
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
   if (window.lucide) lucide.createIcons();
   setupCanvas(page.objectUrl);
   bindEditorButtons();
+  bindScriptModal();
 }
 
 function setupCanvas(imageUrl) {
@@ -178,13 +210,12 @@ function setupCanvas(imageUrl) {
   };
 }
 
-// 3. Drag to Select Bubble Tool
+// 3. Precision Drag-To-Translate
 function setupDragToTranslate() {
   const canvas = appState.fabricCanvas;
   let isSelecting = false;
   let selectionBox = null;
-  let startX = 0;
-  let startY = 0;
+  let startX = 0, startY = 0;
 
   const dragBtn = document.getElementById('btnDragTranslate');
 
@@ -282,7 +313,6 @@ async function processBubbleRegion(x, y, w, h) {
     );
 
     const croppedBlob = await new Promise(r => cropCanvas.toBlob(r, 'image/png'));
-
     const ocrModel = selectedLang === 'jpn_vert' ? 'jpn_vert' : selectedLang;
     status.textContent = "Scanning characters...";
 
@@ -293,14 +323,17 @@ async function processBubbleRegion(x, y, w, h) {
     const rawText = (result.data.text || '').replace(/\s+/g, '').trim();
 
     if (!rawText) {
-      status.textContent = "No text found. Type English manually.";
+      status.textContent = "No text found. Type dialogue manually.";
       addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, "TYPE HERE");
       setTimeout(() => banner.classList.remove('active'), 2500);
       return;
     }
 
-    status.textContent = `Translating with AI...`;
+    status.textContent = "Translating with Llama 3.2...";
     const englishText = await translateText(rawText);
+
+    // Save detected lines for the summary generator
+    appState.allDetectedDialogue.push(englishText);
 
     // Overlay clean, borderless dialogue
     addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, englishText);
@@ -315,7 +348,6 @@ async function processBubbleRegion(x, y, w, h) {
   }
 }
 
-// 5. Cloudflare Translation Helper
 async function translateText(rawText) {
   const response = await fetch('/api/translate', {
     method: 'POST',
@@ -324,14 +356,11 @@ async function translateText(rawText) {
   });
 
   const data = await response.json();
-  if (!response.ok || data.error) {
-    throw new Error(data.error || 'AI Translation failed');
-  }
-
+  if (!response.ok || data.error) throw new Error(data.error || 'AI Translation failed');
   return data.translatedText || "TRANSLATION ERROR";
 }
 
-// 6. Seamless White Patch Overlay (NO BLACK BORDER)
+// 5. Speech Bubble Typesetting (FIXED: splitByGrapheme is false!)
 function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
   const canvas = appState.fabricCanvas;
   if (!canvas) return;
@@ -339,13 +368,12 @@ function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
   const bubbleW = Math.max(width || 120, 80);
   const bubbleH = Math.max(height || 60, 40);
 
-  // PURE WHITE BACKGROUND - ZERO BLACK BORDER
-  // This erases the old Japanese ink without slapping a square sticker over the artist's bubble
+  // Pure White Background - Zero Black Stroke
   const eraseRect = new fabric.Rect({
     width: bubbleW + 6,
     height: bubbleH + 6,
     fill: '#ffffff',
-    stroke: null, // NO BORDER
+    stroke: null,
     strokeWidth: 0,
     rx: 8,
     ry: 8,
@@ -353,7 +381,7 @@ function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
     originY: 'center'
   });
 
-  // Punchy, readable English manga font
+  // Bangers Font with NATURAL WORD WRAPPING (Never cuts words in half)
   const textBox = new fabric.Textbox(text.toUpperCase(), {
     width: bubbleW,
     fontSize: 22,
@@ -362,7 +390,7 @@ function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
     textAlign: 'center',
     originX: 'center',
     originY: 'center',
-    splitByGrapheme: true
+    splitByGrapheme: false // CRITICAL: Wraps by full words only!
   });
 
   const group = new fabric.Group([eraseRect, textBox], {
@@ -426,6 +454,52 @@ function setupObjectListeners() {
       inspector.classList.remove('active');
       canvas.renderAll();
     }
+  };
+}
+
+// 6. Shorts Script & Summary Modal Logic
+function bindScriptModal() {
+  const modal = document.getElementById('scriptModal');
+  const btnOpen = document.getElementById('btnOpenScriptModal');
+  const btnClose = document.getElementById('btnCloseModal');
+  const btnCopy = document.getElementById('btnCopyScript');
+  const btnRegen = document.getElementById('btnRegenScript');
+  const content = document.getElementById('scriptContent');
+
+  if (!btnOpen) return;
+
+  async function generateScript() {
+    modal.style.display = 'flex';
+    content.textContent = "⏳ Generating viral YouTube Shorts voiceover script and scene summary with Llama 3.2...";
+
+    try {
+      const dialogueContext = appState.allDetectedDialogue.join(' | ') || 'Manga characters discussing an interesting scene';
+      
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: dialogueContext })
+      });
+
+      const data = await response.json();
+      content.textContent = data.script || 'Could not generate summary.';
+    } catch (err) {
+      content.textContent = `Error generating script: ${err.message}`;
+    }
+  }
+
+  btnOpen.onclick = generateScript;
+  btnRegen.onclick = generateScript;
+  btnCloseModal.onclick = () => { modal.style.display = 'none'; };
+
+  btnCopy.onclick = () => {
+    navigator.clipboard.writeText(content.textContent);
+    btnCopy.innerHTML = '<i data-lucide="check"></i> COPIED!';
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => {
+      btnCopy.innerHTML = '<i data-lucide="copy"></i> COPY SCRIPT';
+      if (window.lucide) lucide.createIcons();
+    }, 2000);
   };
 }
 
