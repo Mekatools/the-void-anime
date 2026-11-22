@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THE VOID ANIME // Manga Short Studio (Clean Translation & Page Summary)
+   THE VOID ANIME // Manga Studio (Auto-Scan & Instant Page Summary)
    ========================================================================== */
 
 const appState = {
@@ -72,7 +72,7 @@ function renderThumbnails() {
 function selectPage(index) {
   if (index < 0 || index >= appState.pages.length) return;
   appState.activePageIndex = index;
-  appState.allDetectedDialogue = []; // Reset dialogue for active page
+  appState.allDetectedDialogue = [];
 
   const cards = thumbnailList.querySelectorAll('.thumbnail-card');
   cards.forEach((c, i) => c.classList.toggle('active', i === index));
@@ -100,7 +100,7 @@ function initEditorWorkspace(page) {
             <i data-lucide="plus-circle"></i> + BLANK TEXT
           </button>
 
-          <!-- CLEAN: Page Summary Button -->
+          <!-- Automatic 1-Click Page Summary -->
           <button class="btn-primary" id="btnOpenSummaryModal" style="background: #ffb800; color: #000;">
             <i data-lucide="book-open"></i> PAGE SUMMARY
           </button>
@@ -144,7 +144,7 @@ function initEditorWorkspace(page) {
         </button>
       </div>
 
-      <!-- PURE PAGE SUMMARY MODAL -->
+      <!-- PAGE SUMMARY MODAL -->
       <div id="summaryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:#12141a; border:2px solid #ffb800; border-radius:8px; max-width:600px; width:90%; padding:2rem; max-height:85vh; display:flex; flex-direction:column; gap:1.25rem; box-shadow:0 20px 50px rgba(0,0,0,0.8);">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #262a36; padding-bottom:0.75rem;">
@@ -155,7 +155,7 @@ function initEditorWorkspace(page) {
           </div>
           
           <div id="summaryContent" style="flex:1; overflow-y:auto; font-family:'Plus Jakarta Sans', sans-serif; font-size:0.95rem; line-height:1.6; color:#f5f6fa; white-space:pre-wrap; background:#0a0b0e; padding:1.25rem; border-radius:4px; border:1px solid #262a36;">
-            Analyzing dialogue to summarize this page...
+            Reading page and generating story summary...
           </div>
 
           <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
@@ -321,7 +321,7 @@ async function processBubbleRegion(x, y, w, h) {
     const rawText = (result.data.text || '').replace(/\s+/g, '').trim();
 
     if (!rawText) {
-      status.textContent = "No text found. Type English manually.";
+      status.textContent = "No text found. Type dialogue manually.";
       addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, "TYPE HERE");
       setTimeout(() => banner.classList.remove('active'), 2500);
       return;
@@ -330,10 +330,7 @@ async function processBubbleRegion(x, y, w, h) {
     status.textContent = "Translating with Llama 3.2...";
     const englishText = await translateText(rawText);
 
-    // Save detected line for the page summary
     appState.allDetectedDialogue.push(englishText);
-
-    // Overlay clean, borderless dialogue
     addCleanSpeechOverlay(x + w / 2, y + h / 2, w, h, englishText);
 
     status.textContent = "Done!";
@@ -358,7 +355,7 @@ async function translateText(rawText) {
   return data.translatedText || "TRANSLATION ERROR";
 }
 
-// 5. Speech Bubble Typesetting (Border-free + Clean Word Wrapping)
+// 5. Clean Speech Overlay
 function addCleanSpeechOverlay(x, y, width, height, text = "SPEECH") {
   const canvas = appState.fabricCanvas;
   if (!canvas) return;
@@ -453,7 +450,7 @@ function setupObjectListeners() {
   };
 }
 
-// 6. Pure Page Summary Modal
+// 6. Automatic 1-Click Page Summary (Reads Page Automatically)
 function bindSummaryModal() {
   const modal = document.getElementById('summaryModal');
   const btnOpen = document.getElementById('btnOpenSummaryModal');
@@ -465,15 +462,28 @@ function bindSummaryModal() {
 
   btnOpen.onclick = async () => {
     modal.style.display = 'flex';
-    content.textContent = "⏳ Reading page dialogue and generating story summary...";
+    content.textContent = "⏳ Reading image dialogue and generating story summary...";
 
     try {
-      const dialogueContext = appState.allDetectedDialogue.join(' | ') || 'Characters in a manga panel having a conversation';
-      
+      let pageDialogue = appState.allDetectedDialogue.join(' | ');
+
+      // If user hasn't dragged over bubbles yet, auto-read page text right now!
+      if (!pageDialogue) {
+        content.textContent = "⏳ Scanning text on this page with OCR...";
+        const activePage = appState.pages[appState.activePageIndex];
+        const selectedLang = document.getElementById('langSelector').value;
+        const worker = await Tesseract.createWorker(selectedLang === 'jpn_vert' ? 'jpn_vert' : selectedLang);
+        const res = await worker.recognize(activePage.file);
+        await worker.terminate();
+        pageDialogue = (res.data.text || '').replace(/\s+/g, ' ').trim();
+      }
+
+      content.textContent = "⏳ Generating story summary with AI...";
+
       const response = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: dialogueContext })
+        body: JSON.stringify({ text: pageDialogue })
       });
 
       const data = await response.json();
@@ -496,7 +506,7 @@ function bindSummaryModal() {
   };
 }
 
-// 7. Toolbar Buttons
+// 7. Buttons
 function bindEditorButtons() {
   document.getElementById('btnAddBubble').onclick = () => {
     addCleanSpeechOverlay(null, null, 130, 60, "ENTER TEXT");
